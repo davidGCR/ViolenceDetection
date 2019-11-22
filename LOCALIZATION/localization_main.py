@@ -1,6 +1,6 @@
 
 import sys
-sys.path.insert(1, '/media/david/datos/PAPERS-SOURCE_CODE/MyCode')
+sys.path.insert(1, '/media/david/datos/PAPERS-SOURCE_CODE/violencedetection')
 import argparse
 import ANOMALYCRIME.transforms_anomaly as transforms_anomaly
 import ANOMALYCRIME.anomaly_initializeDataset as anomaly_initializeDataset
@@ -91,31 +91,29 @@ def __main__():
         masks = tensor2numpy(masks)
         # print('masks numpy', masks.shape)
         saliency_bboxes = localization_utils.computeBoundingBoxFromMask(masks)
-        # print('saliency_bboxes: ', len(saliency_bboxes))
-        # saliency_bboxes2 = localization_utils.joinOverlappedBBoxes_recursively(saliency_bboxes,48)
-        # for bbox in saliency_bboxes:
-        #     localization_utils.printBoundingBox(bbox)
-
-        bbox_persons_in_segment = localization_utils.personDetectionInSegment(video_name[0], bbox_segments[0], yolo_model,
+        
+        #read frames of segment
+        real_frames = localization_utils.getFramesFromSegment(video_name[0], bbox_segments[0], 'first')
+        # print('real_frames: ', len(real_frames), real_frames[0].shape)
+        bbox_persons_in_segment = localization_utils.personDetectionInSegment(real_frames, yolo_model,
                                                                             img_size, conf_thres, nms_thres, classes, 'first')
 
         print('bbox_persons_in_segment: ', len(bbox_persons_in_segment), len(bbox_persons_in_segment[0]))
-        # if len(bbox_persons_in_segment) > 0:
-        #     for bbox_person_in_frame in bbox_persons_in_segment:
-        #         for bbox_person in bbox_person_in_frame:
-        #             area = localization_utils.overlappedArea(bbox_person, saliency_bboxes[0])
-        #             print('Overlaped area: ', area)
-        # else: print('PERSONS NOT FOUND...')
+
+        violent_regions = localization_utils.findAnomalyRegionsOnFrame( bbox_persons_in_segment[0], saliency_bboxes, 48)
+        
         shape = masks.shape
         if shape[2] == 1:
             masks = np.squeeze(masks,2)
             masks = localization_utils.gray2rgbRepeat(masks)
+
         fig, ax = plt.subplots()
-        ax.imshow(masks)
+        ax.imshow(real_frames[0])
         ax = localization_utils.plotBBoxesOnImage(ax, saliency_bboxes, constants.RED)
         # plt.show()
-
         ax = localization_utils.plotBBoxesOnImage(ax, bbox_persons_in_segment[0], constants.GREEN)
+        
+        ax = localization_utils.plotBBoxesOnImage(ax, violent_regions, constants.CYAN)
         # img = localization_utils.plotBBoxesOnImage(masks, saliency_bboxes2)
         plt.show()
         # while (1):
@@ -128,12 +126,7 @@ def __main__():
         #         break
         #     if k == ord('q'):
         #         # localization_utils.tuple2BoundingBox(bboxes[0])
-        #         sys.exit('finish!!!')
-
-        
-        
-
-        
+        #         sys.exit('finish!!!')       
     # saliencyTester.test(saliency_model_file, num_classes, dataloaders_dict['test'], test_names, input_size, saliency_model_config, numDiPerVideos)
 
 __main__()

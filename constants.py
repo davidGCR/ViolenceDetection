@@ -40,4 +40,4 @@ IDX_YMAX = 6
 
 RED = 'r'
 GREEN = 'g'
-# RED = 'r'
+CYAN = 'c'

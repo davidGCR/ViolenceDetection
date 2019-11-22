@@ -1,5 +1,5 @@
 import sys
-sys.path.insert(1, '/media/david/datos/PAPERS-SOURCE_CODE/MyCode')
+sys.path.insert(1, '/media/david/datos/PAPERS-SOURCE_CODE/violencedetection')
 import os
 import constants
 import glob
@@ -17,6 +17,17 @@ from matplotlib.ticker import NullLocator
 import copy
 # import point.Point as Point
 
+def findAnomalyRegionsOnFrame(personBboxes, salencyBboxes, threshold):
+    anomalyRegions = []
+    for personBox in personBboxes:
+        for saliencyBox in salencyBboxes:
+            over_area = overlappedArea(personBox, saliencyBox)
+
+            percent_area = percentajeOverlappedArea(personBox.area(), over_area)
+            if percent_area >= threshold:
+                anomalyRegions.append(personBox)
+    anomalyRegions = set(anomalyRegions)
+    return list(anomalyRegions)
 
 def printBoundingBox(bbox):
     print("=> x1: %.5f, y1: %.5f, x2: %.5f, y2: %.5f" % (bbox.pmin.x, bbox.pmin.y, bbox.pmax.x, bbox.pmax.y))
@@ -45,7 +56,6 @@ def joinOverlappedBBoxes_recursively(bbox_list, threshold=48):
     if len(bbox_list) == 1:
         return bbox_list
     else:
-        print('000000000f0f0f0f0f0f')
         for i in range(1,len(bbox_list)):
             overlap_area = overlappedArea(bbox_list[0], bbox_list[i])
             if overlap_area > 0:
@@ -94,49 +104,67 @@ def joinOverlappedBBoxes(bboxes, threshold=48):
                     del bboxes_r[i]
     return bboxes_r
 
-def personDetectionInSegment(video_name, frames_segment, yolo_model, img_size, conf_thres, nms_thres, classes, num_frames):
-    bbox_persons_in_segment = []
+def getFramesFromSegment(video_name, frames_segment, num_frames):
+    print('sdfasffffffffffffffffffffffffff')
+    frames = []
     if num_frames == 'all':
         for frame_info in frames_segment:
             frame_name = str(frame_info[0][0])
             frame_path = os.path.join(video_name, frame_name)
-            bbox_persons_in_frame = personDetectionInFrame(yolo_model, img_size, conf_thres, nms_thres, classes, frame_path)
-            bbox_persons_in_segment.append(bbox_persons_in_frame)
+            # image = np.array(Image.open(frame_path))
+            image = Image.open(frame_path)
+            frames.append(image)
     elif num_frames == 'first':
         frame_info = frames_segment[0]
         frame_name = str(frame_info[0][0])
         frame_path = os.path.join(video_name, frame_name)
-        bbox_persons_in_frame = personDetectionInFrame(yolo_model, img_size, conf_thres, nms_thres, classes, frame_path)
-        bbox_persons_in_segment.append(bbox_persons_in_frame)
+        image = Image.open(frame_path)
+        frames.append(image)
     elif  num_frames == 'extremes':
         frame_info_first = frames_segment[0]
         frame_name_first = str(frame_info_first[0][0])
         frame_path_first = os.path.join(video_name, frame_name_first)
-        bbox_persons_in_frame_first = personDetectionInFrame(yolo_model, img_size, conf_thres, nms_thres, classes, frame_path_first)
-
+        image = Image.open(frame_path_first)
+        frames.append(image)
         frame_info_end = frames_segment[len(frames_segment)-1]
         frame_name_end = str(frame_info_end[0][0])
         frame_path_end = os.path.join(video_name, frame_name_end)
-        bbox_persons_in_frame_end = personDetectionInFrame(yolo_model, img_size, conf_thres, nms_thres, classes, frame_path_end)
+        image = Image.open(frame_path_end)
+        frames.append(image)
+    return frames
 
+
+def personDetectionInSegment(frames_list, yolo_model, img_size, conf_thres, nms_thres, classes, type_num_frames):
+    bbox_persons_in_segment = []
+    if type_num_frames == 'all':
+        for ioImage in frames_list:
+            bbox_persons_in_frame = personDetectionInFrame(yolo_model, img_size, conf_thres, nms_thres, classes, ioImage)
+            bbox_persons_in_segment.append(bbox_persons_in_frame)
+    elif type_num_frames == 'first':
+        bbox_persons_in_frame = personDetectionInFrame(yolo_model, img_size, conf_thres, nms_thres, classes, frames_list[0])
+        bbox_persons_in_segment.append(bbox_persons_in_frame)
+    elif  type_num_frames == 'extremes':
+        bbox_persons_in_frame_first = personDetectionInFrame(yolo_model, img_size, conf_thres, nms_thres, classes, frames_list[0])
+        bbox_persons_in_frame_end = personDetectionInFrame(yolo_model, img_size, conf_thres, nms_thres, classes, frames_list[len(frames_list)-1])
         bbox_persons_in_segment.append(bbox_persons_in_frame_first)
         bbox_persons_in_segment.append(bbox_persons_in_frame_end)
     return bbox_persons_in_segment
 
-def personDetectionInFrame(model, img_size, conf_thres, nms_thres, classes, frame_path, plot = False):
+def personDetectionInFrame(model, img_size, conf_thres, nms_thres, classes, ioImage, plot = False):
     
-    print('='*20+' YOLOv3 - ', frame_path)
-    img = yolo_inference.preProcessImage(frame_path, img_size)
+    # print('='*20+' YOLOv3 - ', frame_path)
+    img = yolo_inference.preProcessImage(ioImage, img_size)
     detections = yolo_inference.inference(model, img, conf_thres, nms_thres)
-    image = np.array(Image.open(frame_path))
+    ioImage = np.array(ioImage)
+    # image = np.array(Image.open(frame_path))
     # print('image type: ', type(image), image.dtype, image.shape)
     if plot:
         fig, ax = plt.subplots()
-        ax.imshow(image)
+        ax.imshow(ioImage)
     bbox_persons = []
     if detections is not None:
         # print('detectios rescale: ', type(detections), detections.size())
-        detections = yolo_inference.rescale_boxes(detections, 416, image.shape[:2])
+        detections = yolo_inference.rescale_boxes(detections, 416, ioImage.shape[:2])
         unique_labels = detections[:, -1].cpu().unique()
         for x1, y1, x2, y2, conf, cls_conf, cls_pred in detections:
             if classes[int(cls_pred)] == 'person':

@@ -146,8 +146,13 @@ def inference(model, input_imgs, conf_thres, nms_thres): #input_imgs:  <class 't
         detections = None
     return detections #inference torch.Size([4, 7])
 
-def preProcessImage(img_path, img_size):
-    img = transforms.ToTensor()(Image.open(img_path))
+def preProcessImage(npImage, img_size):
+    # npImage = np.transpose(1,2,0)
+    # npImage = Image.fromarray(npImage.astype('uint8'), 'RGB')
+    # npImage = transforms.ToPILImage(npImage)
+    
+    img = transforms.ToTensor()(npImage)
+    print('preProcessImage: ', type(img), img.size())
     # Pad to square resolution
     img, _ = pad_to_square2(img, 0)
     # Resize
@@ -156,7 +161,10 @@ def preProcessImage(img_path, img_size):
     return img.unsqueeze(0)
 
 def pad_to_square2(img, pad_value):
-    c, h, w = img.shape
+    size = img.size()
+    c = size[0]
+    h = size[1]
+    w = size[2]
     dim_diff = np.abs(h - w)
     # (upper / left) padding and (lower / right) padding
     pad1, pad2 = dim_diff // 2, dim_diff - dim_diff // 2
