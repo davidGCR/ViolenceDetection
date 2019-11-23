@@ -21,6 +21,9 @@ from bounding_box import BoundingBox
 import matplotlib.pyplot as plt
 from YOLOv3 import yolo_inference
 import torchvision.transforms as transforms
+import matplotlib.animation as animation
+
+
  
 def __main__():
     parser = argparse.ArgumentParser()
@@ -33,7 +36,7 @@ def __main__():
 
     args = parser.parse_args()
     maxNumFramesOnVideo = 0
-    videoSegmentLength = 5
+    videoSegmentLength = 25
     numDiPerVideos = args.numDiPerVideos
     positionSegment = 'begin'
     num_classes = 2 #anomalus or not
@@ -93,12 +96,13 @@ def __main__():
         saliency_bboxes = localization_utils.computeBoundingBoxFromMask(masks)
         
         #read frames of segment
-        real_frames = localization_utils.getFramesFromSegment(video_name[0], bbox_segments[0], 'first')
-        # print('real_frames: ', len(real_frames), real_frames[0].shape)
+        type_set_frames = 'all'
+        real_frames = localization_utils.getFramesFromSegment(video_name[0], bbox_segments[0], type_set_frames)
+        print('real_frames: ', len(real_frames), type(real_frames[8]))
         bbox_persons_in_segment = localization_utils.personDetectionInSegment(real_frames, yolo_model,
                                                                             img_size, conf_thres, nms_thres, classes, 'first')
 
-        print('bbox_persons_in_segment: ', len(bbox_persons_in_segment), len(bbox_persons_in_segment[0]))
+        # print('bbox_persons_in_segment: ', len(bbox_persons_in_segment), len(bbox_persons_in_segment[0]))
 
         violent_regions = localization_utils.findAnomalyRegionsOnFrame( bbox_persons_in_segment[0], saliency_bboxes, 48)
         
@@ -108,14 +112,31 @@ def __main__():
             masks = localization_utils.gray2rgbRepeat(masks)
 
         fig, ax = plt.subplots()
-        ax.imshow(real_frames[0])
-        ax = localization_utils.plotBBoxesOnImage(ax, saliency_bboxes, constants.RED)
-        # plt.show()
-        ax = localization_utils.plotBBoxesOnImage(ax, bbox_persons_in_segment[0], constants.GREEN)
-        
-        ax = localization_utils.plotBBoxesOnImage(ax, violent_regions, constants.CYAN)
+        # ax.imshow(real_frames[len(real_frames)//2])
+        ax.imshow(masks)
+        ax = localization_utils.plotBBoxesOnImage(ax, saliency_bboxes, constants.RED, 'saliency')
+        ax = localization_utils.plotBBoxesOnImage(ax, bbox_persons_in_segment[0], constants.GREEN, 'person')
+        ax = localization_utils.plotBBoxesOnImage(ax, violent_regions, constants.CYAN,'anomalous')
         # img = localization_utils.plotBBoxesOnImage(masks, saliency_bboxes2)
         plt.show()
+       
+        # fig2 = plt.figure(figsize=(15., 4.))
+        fig2, ax2 = plt.subplots()
+        # debug_frames = real_frames[:3]
+        def updatefig(im, frame):
+            im.set_array(frame)
+            return im
+
+        for frame2 in real_frames:
+            # print('343242425354')
+            im = ax2.imshow(np.array(frame2))
+            updatefig(im, frame2)
+            # ani = animation.FuncAnimation(fig2, updatefig, interval=50, blit=True)
+            plt.show()
+            # ax2 = localization_utils.plotBBoxesOnImage(ax2, violent_regions, constants.CYAN,'anomalous')
+        # localization_utils.plot_grid(fig2, debug_frames)
+            # plt.show()
+            # plt.pause(0.0005)
         # while (1):
         #     plt.show()
         #     # cv2.imshow('eefef', img)

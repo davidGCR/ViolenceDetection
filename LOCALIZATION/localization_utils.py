@@ -14,6 +14,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.ticker import NullLocator
+from mpl_toolkits.axes_grid1 import ImageGrid
 import copy
 # import point.Point as Point
 
@@ -105,7 +106,7 @@ def joinOverlappedBBoxes(bboxes, threshold=48):
     return bboxes_r
 
 def getFramesFromSegment(video_name, frames_segment, num_frames):
-    print('sdfasffffffffffffffffffffffffff')
+    # print('sdfasffffffffffffffffffffffffff')
     frames = []
     if num_frames == 'all':
         for frame_info in frames_segment:
@@ -232,7 +233,7 @@ def findContours(img, remove_fathers = True):
     # cv2.imshow('Contours', drawing)
     return drawing, contours
 
-def plotBBoxesOnImage(ax, bboxes, color):
+def plotBBoxesOnImage(ax, bboxes, color, text):
     # shape = img.shape
     # if shape[2] == 1:
     #     img = np.squeeze(img,2)
@@ -247,6 +248,7 @@ def plotBBoxesOnImage(ax, bboxes, color):
         rect = patches.Rectangle((box.pmin.x, box.pmin.y), w, h, linewidth=1, edgecolor=color, facecolor='none')
         # Add the patch to the Axes
         ax.add_patch(rect)
+        plt.text( box.pmin.x, box.pmin.y, s=text, color="white", verticalalignment="top", bbox={"color": color, "pad": 0}, )
         # cv2.rectangle(img,(box.pmin.x,box.pmin.y),(box.pmax.x,box.pmax.y),color,2)
         # cv2.rectangle(img, (int(bboxes[i][0]),int(bboxes[i][1])),
         #                 (int(bboxes[i][0] + bboxes[i][2]),int(bboxes[i][1] + bboxes[i][3])),
@@ -277,8 +279,26 @@ def cvRect2BoundingBox(cvRect):
     bb = BoundingBox(pmin,pmax)
     # print('bbbbbbbbxxxxx: ', pmin.x, bb.center.x)
     return bb
-    
 
+def plot_grid(fig, images):
+    """
+    A grid of 2x2 images with 0.05 inch pad between images and only
+    the lower-left axes is labeled.
+    """
+    grid = ImageGrid(fig, (1,1,1),  # similar to subplot(141)
+                     nrows_ncols=(1, len(images)),
+                     axes_pad=0.05,
+                     label_mode="1",
+                     )
+
+    # Z, extent = get_demo_image()
+    for ax, image  in zip(grid, images):
+        ax.imshow(image)
+
+    # This only affects axes in first column and second row as share_all =
+    # False.
+    # grid.axes_llc.set_xticks([-2, 0, 2])
+    # grid.axes_llc.set_yticks([-2, 0, 2])
 
 def thresholding_cv2(x):
         x = 255*x #between 0-255
