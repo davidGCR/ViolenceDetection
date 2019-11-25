@@ -24,7 +24,7 @@ class AnomalyDataset(Dataset):
         self.maxNumFramesOnVideo = maxNumFramesOnVideo # to use only some frames
         self.videoSegmentLength = videoSegmentLength # max number of frames by segment video
         self.positionSegment = positionSegment  #could be at begin, central or random
-        self.skipPercentage = 35
+        self.skipPercentage = 35 
 
     def __len__(self):
         return len(self.images)

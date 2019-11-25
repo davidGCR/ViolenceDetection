@@ -22,6 +22,7 @@ import matplotlib.pyplot as plt
 from YOLOv3 import yolo_inference
 import torchvision.transforms as transforms
 import matplotlib.animation as animation
+from matplotlib.animation import FuncAnimation
 
 
  
@@ -78,11 +79,9 @@ def __main__():
     for i, data in enumerate(dataloaders_dict['test'], 0):
         print("-" * 150)
         di_images, labels, video_name, bbox_segments = data
-        print(video_name)
+        print(video_name, len(bbox_segments))
         bbox_segments = np.array(bbox_segments)
         # print('bbox_segments: ', bbox_segments.shape)  #(1, 16, 6)
-        
-        #     plt.show()
         
         masks = tester.compute_mask(di_images, labels)
         masks = torch.squeeze(masks, 0) #tensor [1,224,224]
@@ -97,14 +96,16 @@ def __main__():
         
         #read frames of segment
         type_set_frames = 'all'
-        real_frames = localization_utils.getFramesFromSegment(video_name[0], bbox_segments[0], type_set_frames)
-        print('real_frames: ', len(real_frames), type(real_frames[8]))
+        real_frames,  real_bboxes = localization_utils.getFramesFromSegment(video_name[0], bbox_segments[0], type_set_frames)
+        print('real_frames, real_bboxes: ', len(real_frames), len(real_bboxes))
+        # for bbox in real_bboxes:
+        #     print(bbox)
         bbox_persons_in_segment = localization_utils.personDetectionInSegment(real_frames, yolo_model,
                                                                             img_size, conf_thres, nms_thres, classes, 'first')
 
         # print('bbox_persons_in_segment: ', len(bbox_persons_in_segment), len(bbox_persons_in_segment[0]))
-
-        violent_regions = localization_utils.findAnomalyRegionsOnFrame( bbox_persons_in_segment[0], saliency_bboxes, 48)
+        anomalous_regions = localization_utils.findAnomalyRegionsOnFrame(bbox_persons_in_segment[0], saliency_bboxes, 48, 50)
+        print('anomalous_regions', type(anomalous_regions), len(anomalous_regions))
         
         shape = masks.shape
         if shape[2] == 1:
@@ -113,26 +114,32 @@ def __main__():
 
         fig, ax = plt.subplots()
         # ax.imshow(real_frames[len(real_frames)//2])
-        ax.imshow(masks)
-        ax = localization_utils.plotBBoxesOnImage(ax, saliency_bboxes, constants.RED, 'saliency')
-        ax = localization_utils.plotBBoxesOnImage(ax, bbox_persons_in_segment[0], constants.GREEN, 'person')
-        ax = localization_utils.plotBBoxesOnImage(ax, violent_regions, constants.CYAN,'anomalous')
-        # img = localization_utils.plotBBoxesOnImage(masks, saliency_bboxes2)
+        # ax.imshow(masks)
+        # ax = localization_utils.plotBBoxesOnImage(ax, saliency_bboxes, constants.RED, 'saliency')
+        # ax = localization_utils.plotBBoxesOnImage(ax, bbox_persons_in_segment[0], constants.GREEN, 'person')
+        # ax = localization_utils.plotBBoxesOnImage(ax, violent_regions, constants.CYAN,'anomalous')
+        # plt.show()
+
+        def f(image):
+            return np.array(image)
+
+        ims = []
+        for i in range(len(real_frames)):
+            
+            image = localization_utils.plotOnlyBBoxOnImage(real_frames[i], real_bboxes[i], constants.PIL_RED, 'Ground Truth')
+            image = localization_utils.plotOnlyBBoxOnImage(image, anomalous_regions[0], constants.PIL_WHITE, 'Anomalous')
+            im = plt.imshow(f(image), animated=True)
+            # fig, ax = localization_utils.plotBBoxesOnImage(fig, ax, violent_regions, constants.CYAN, 'anomalous')
+            # ax = localization_utils.plotBBoxesOnImage(ax, violent_regions, constants.CYAN,'anomalous')
+            ims.append([im])
+
+        ani = animation.ArtistAnimation(fig, ims, interval=100, blit=True, repeat_delay=100)
+                         
         plt.show()
        
         # fig2 = plt.figure(figsize=(15., 4.))
-        fig2, ax2 = plt.subplots()
-        # debug_frames = real_frames[:3]
-        def updatefig(im, frame):
-            im.set_array(frame)
-            return im
-
-        for frame2 in real_frames:
-            # print('343242425354')
-            im = ax2.imshow(np.array(frame2))
-            updatefig(im, frame2)
-            # ani = animation.FuncAnimation(fig2, updatefig, interval=50, blit=True)
-            plt.show()
+        # fig2, ax2 = plt.subplots()
+        
             # ax2 = localization_utils.plotBBoxesOnImage(ax2, violent_regions, constants.CYAN,'anomalous')
         # localization_utils.plot_grid(fig2, debug_frames)
             # plt.show()

@@ -17,3 +17,6 @@ class Point(object):
     @y.setter
     def y(self, y):
         self._y = y
+    
+    def __str__(self):
+        return 'Point('+str(self._x)+','+str(self._y)+')'

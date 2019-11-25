@@ -36,8 +36,10 @@ IDX_FLAC = 1
 IDX_XMIN = 2
 IDX_YMIN = 3
 IDX_XMAX = 4
-IDX_YMAX = 6
+IDX_YMAX = 5
 
 RED = 'r'
 GREEN = 'g'
 CYAN = 'c'
+PIL_WHITE = (255, 255, 255)
+PIL_RED = (255, 0, 0)
